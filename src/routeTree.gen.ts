@@ -10,12 +10,24 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AutomacoesRouteImport } from './routes/automacoes'
+import { Route as ExecucoesRouteImport } from './routes/execucoes'
 import { Route as ApiPublicHooksAutomationTickRouteImport } from './routes/api/public/hooks/automation-tick'
 import { Route as ApiPublicHooksWhapiRouteImport } from './routes/api/public/hooks/whapi'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AutomacoesRoute = AutomacoesRouteImport.update({
+  id: '/automacoes',
+  path: '/automacoes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ExecucoesRoute = ExecucoesRouteImport.update({
+  id: '/execucoes',
+  path: '/execucoes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicHooksAutomationTickRoute =
@@ -32,35 +44,54 @@ const ApiPublicHooksWhapiRoute = ApiPublicHooksWhapiRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/automacoes': typeof AutomacoesRoute
+  '/execucoes': typeof ExecucoesRoute
   '/api/public/hooks/automation-tick': typeof ApiPublicHooksAutomationTickRoute
   '/api/public/hooks/whapi': typeof ApiPublicHooksWhapiRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/automacoes': typeof AutomacoesRoute
+  '/execucoes': typeof ExecucoesRoute
   '/api/public/hooks/automation-tick': typeof ApiPublicHooksAutomationTickRoute
   '/api/public/hooks/whapi': typeof ApiPublicHooksWhapiRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/automacoes': typeof AutomacoesRoute
+  '/execucoes': typeof ExecucoesRoute
   '/api/public/hooks/automation-tick': typeof ApiPublicHooksAutomationTickRoute
   '/api/public/hooks/whapi': typeof ApiPublicHooksWhapiRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/api/public/hooks/automation-tick' | '/api/public/hooks/whapi'
+    | '/'
+    | '/automacoes'
+    | '/execucoes'
+    | '/api/public/hooks/automation-tick'
+    | '/api/public/hooks/whapi'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/public/hooks/automation-tick' | '/api/public/hooks/whapi'
+  to:
+    | '/'
+    | '/automacoes'
+    | '/execucoes'
+    | '/api/public/hooks/automation-tick'
+    | '/api/public/hooks/whapi'
   id:
     | '__root__'
     | '/'
+    | '/automacoes'
+    | '/execucoes'
     | '/api/public/hooks/automation-tick'
     | '/api/public/hooks/whapi'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AutomacoesRoute: typeof AutomacoesRoute
+  ExecucoesRoute: typeof ExecucoesRoute
   ApiPublicHooksAutomationTickRoute: typeof ApiPublicHooksAutomationTickRoute
   ApiPublicHooksWhapiRoute: typeof ApiPublicHooksWhapiRoute
 }
@@ -72,6 +103,20 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/automacoes': {
+      id: '/automacoes'
+      path: '/automacoes'
+      fullPath: '/automacoes'
+      preLoaderRoute: typeof AutomacoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/execucoes': {
+      id: '/execucoes'
+      path: '/execucoes'
+      fullPath: '/execucoes'
+      preLoaderRoute: typeof ExecucoesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/hooks/automation-tick': {
@@ -93,6 +138,8 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AutomacoesRoute: AutomacoesRoute,
+  ExecucoesRoute: ExecucoesRoute,
   ApiPublicHooksAutomationTickRoute: ApiPublicHooksAutomationTickRoute,
   ApiPublicHooksWhapiRoute: ApiPublicHooksWhapiRoute,
 }
