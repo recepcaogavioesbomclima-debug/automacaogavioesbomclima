@@ -14,7 +14,325 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      automation_executions: {
+        Row: {
+          attempts: number
+          automation_id: string
+          completed_at: string | null
+          created_at: string
+          current_step: number
+          id: string
+          last_error: string | null
+          lead_id: string | null
+          next_run_at: string
+          phone: string
+          replied: boolean
+          started_at: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          attempts?: number
+          automation_id: string
+          completed_at?: string | null
+          created_at?: string
+          current_step?: number
+          id?: string
+          last_error?: string | null
+          lead_id?: string | null
+          next_run_at?: string
+          phone: string
+          replied?: boolean
+          started_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          attempts?: number
+          automation_id?: string
+          completed_at?: string | null
+          created_at?: string
+          current_step?: number
+          id?: string
+          last_error?: string | null
+          lead_id?: string | null
+          next_run_at?: string
+          phone?: string
+          replied?: boolean
+          started_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_executions_automation_id_fkey"
+            columns: ["automation_id"]
+            isOneToOne: false
+            referencedRelation: "automations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "automation_executions_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automation_logs: {
+        Row: {
+          created_at: string
+          data: Json | null
+          event: string
+          execution_id: string | null
+          id: string
+          status: string | null
+          step_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          data?: Json | null
+          event: string
+          execution_id?: string | null
+          id?: string
+          status?: string | null
+          step_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          data?: Json | null
+          event?: string
+          execution_id?: string | null
+          id?: string
+          status?: string | null
+          step_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_logs_execution_id_fkey"
+            columns: ["execution_id"]
+            isOneToOne: false
+            referencedRelation: "automation_executions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automation_steps: {
+        Row: {
+          automation_id: string
+          config: Json
+          created_at: string
+          id: string
+          order_index: number
+          type: string
+        }
+        Insert: {
+          automation_id: string
+          config?: Json
+          created_at?: string
+          id?: string
+          order_index: number
+          type: string
+        }
+        Update: {
+          automation_id?: string
+          config?: Json
+          created_at?: string
+          id?: string
+          order_index?: number
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_steps_automation_id_fkey"
+            columns: ["automation_id"]
+            isOneToOne: false
+            referencedRelation: "automations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automations: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          status: string
+          trigger: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          status?: string
+          trigger?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          status?: string
+          trigger?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      leads: {
+        Row: {
+          created_at: string
+          id: string
+          name: string | null
+          phone: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name?: string | null
+          phone: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string | null
+          phone?: string
+        }
+        Relationships: []
+      }
+      messages: {
+        Row: {
+          chat_id: string | null
+          content: string | null
+          created_at: string
+          direction: string
+          error: string | null
+          execution_id: string | null
+          id: string
+          idempotency_key: string | null
+          phone: string
+          provider_message_id: string | null
+          status: string
+          type: string
+        }
+        Insert: {
+          chat_id?: string | null
+          content?: string | null
+          created_at?: string
+          direction: string
+          error?: string | null
+          execution_id?: string | null
+          id?: string
+          idempotency_key?: string | null
+          phone: string
+          provider_message_id?: string | null
+          status?: string
+          type?: string
+        }
+        Update: {
+          chat_id?: string | null
+          content?: string | null
+          created_at?: string
+          direction?: string
+          error?: string | null
+          execution_id?: string | null
+          id?: string
+          idempotency_key?: string | null
+          phone?: string
+          provider_message_id?: string | null
+          status?: string
+          type?: string
+        }
+        Relationships: []
+      }
+      send_window: {
+        Row: {
+          days: number[]
+          end_hour: number
+          id: boolean
+          start_hour: number
+          tz_offset_minutes: number
+          updated_at: string
+        }
+        Insert: {
+          days?: number[]
+          end_hour?: number
+          id?: boolean
+          start_hour?: number
+          tz_offset_minutes?: number
+          updated_at?: string
+        }
+        Update: {
+          days?: number[]
+          end_hour?: number
+          id?: boolean
+          start_hour?: number
+          tz_offset_minutes?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      webhook_events: {
+        Row: {
+          created_at: string
+          event_type: string | null
+          id: string
+          payload: Json | null
+          processed_at: string | null
+          provider_event_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_type?: string | null
+          id?: string
+          payload?: Json | null
+          processed_at?: string | null
+          provider_event_id: string
+        }
+        Update: {
+          created_at?: string
+          event_type?: string | null
+          id?: string
+          payload?: Json | null
+          processed_at?: string | null
+          provider_event_id?: string
+        }
+        Relationships: []
+      }
+      whatsapp_sessions: {
+        Row: {
+          channel_id: string | null
+          connected_number: string | null
+          created_at: string
+          id: string
+          last_error: string | null
+          provider: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          channel_id?: string | null
+          connected_number?: string | null
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          provider?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          channel_id?: string | null
+          connected_number?: string | null
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          provider?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
