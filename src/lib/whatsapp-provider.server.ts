@@ -57,11 +57,9 @@ async function request(
   };
   if (init.body !== undefined) headers["Content-Type"] = "application/json";
 
-  const res = await fetch(`${BASE}${path}`, {
-    method: init.method ?? "GET",
-    headers,
-    body: init.body === undefined ? undefined : JSON.stringify(init.body),
-  });
+  const requestInit: RequestInit = { method: init.method ?? "GET", headers };
+  if (init.body !== undefined) requestInit.body = JSON.stringify(init.body);
+  const res = await fetch(`${BASE}${path}`, requestInit);
 
   const contentType = res.headers.get("content-type") ?? "";
   if (contentType.startsWith("image/")) {
@@ -114,6 +112,19 @@ function toBase64(buffer: ArrayBuffer): string {
   for (let i = 0; i < bytes.length; i += 1) binary += String.fromCharCode(bytes[i]!);
   // btoa existe no runtime do Worker
   return btoa(binary);
+}
+
+/** Traduz o erro real do provedor para uma mensagem clara, sem esconder o retorno. */
+function describeSendError(status: number, body: string): string {
+  const raw = body.slice(0, 400);
+  if (status === 401 || status === 403) return `Token invalido ou sem permissao (HTTP ${status}): ${raw}`;
+  if (status === 404) return `Endpoint ou recurso inexistente (HTTP 404): ${raw}`;
+  if (status === 400) return `Payload ou destinatario invalido (HTTP 400): ${raw}`;
+  if (status === 409) return `Sessao nao autorizada (HTTP 409): ${raw}`;
+  if (status === 429) return `Limite de envio do provedor atingido (HTTP 429): ${raw}`;
+  if (status >= 500) return `Provedor indisponivel (HTTP ${status}): ${raw}`;
+  if (!status) return `Falha de rede/timeout ao falar com o provedor: ${raw}`;
+  return `Falha no envio (HTTP ${status}): ${raw}`;
 }
 
 export interface HealthResult {
@@ -177,24 +188,75 @@ export const WhatsAppProvider = {
     return health.connectedNumber;
   },
 
+  /**
+   * Verifica no provedor se o numero existe no WhatsApp.
+   * Whapi: POST /contacts -> { contacts: [{ input, status: "valid"|"invalid", wa_id }] }
+   */
+  async checkNumber(phone: string): Promise<{ valid: boolean; waId: string | null; raw: unknown }> {
+    const { json } = await request("/contacts", {
+      method: "POST",
+      body: { blocking: "wait", force_check: true, contacts: [phone] },
+    });
+    const entry = Array.isArray(json?.contacts) ? json.contacts[0] : null;
+    return {
+      valid: entry?.status === "valid",
+      waId: entry?.wa_id ?? null,
+      raw: json,
+    };
+  },
+
   /** Envio REAL. Retorna o id da mensagem confirmado pelo provedor. */
   async sendMessage(
     to: string,
     body: string,
   ): Promise<{ providerMessageId: string; chatId: string | null; raw: unknown }> {
-    const { json } = await request("/messages/text", {
-      method: "POST",
-      body: { to, body },
-    });
-    const providerMessageId = json?.message?.id ?? json?.id;
-    if (!providerMessageId) {
-      throw new ProviderError(200, `envio sem confirmacao do provedor: ${JSON.stringify(json)}`);
+    const endpoint = "/messages/text";
+    const health = await WhatsAppProvider.getStatus(false).catch(() => null);
+    const from = health?.connectedNumber ?? null;
+
+    if (health && health.status !== "CONNECTED") {
+      throw new ProviderError(
+        409,
+        `sessao nao autorizada para envio (status real do provedor: ${health.rawStatus || health.status})`,
+      );
     }
-    return {
-      providerMessageId: String(providerMessageId),
-      chatId: json?.message?.chat_id ?? null,
-      raw: json,
-    };
+
+    const check = await WhatsAppProvider.checkNumber(to).catch(() => null);
+    if (check && !check.valid) {
+      throw new ProviderError(
+        400,
+        `numero de destino invalido no WhatsApp: ${to} (verifique DDI 55 + DDD + numero)`,
+      );
+    }
+
+    const payload = { to, body };
+    let status = 0;
+    let responseText = "";
+    try {
+      const res = await request(endpoint, { method: "POST", body: payload });
+      status = res.status;
+      responseText = res.text;
+      const json = res.json;
+      const providerMessageId = json?.message?.id ?? json?.id;
+      if (json?.sent === false || !providerMessageId) {
+        throw new ProviderError(status, `envio sem confirmacao do provedor: ${res.text}`);
+      }
+      console.log(
+        `[WHATSAPP SEND]\nProvider: whapi\nSession: ${health?.channelId ?? "?"}\nFrom: ${from}\nTo: ${to}\nEndpoint: ${BASE}${endpoint}\nMethod: POST\nPayload: ${JSON.stringify(payload)}\nHTTP Status: ${status}\nResponse: ${responseText.slice(0, 600)}`,
+      );
+      return {
+        providerMessageId: String(providerMessageId),
+        chatId: json?.message?.chat_id ?? null,
+        raw: json,
+      };
+    } catch (error: any) {
+      const errStatus = error instanceof ProviderError ? error.status : status;
+      const errBody = error instanceof ProviderError ? error.body : String(error?.message ?? error);
+      console.error(
+        `[WHATSAPP SEND]\nProvider: whapi\nSession: ${health?.channelId ?? "?"}\nFrom: ${from}\nTo: ${to}\nEndpoint: ${BASE}${endpoint}\nMethod: POST\nPayload: ${JSON.stringify(payload)}\nHTTP Status: ${errStatus}\nResponse: ${String(errBody).slice(0, 600)}`,
+      );
+      throw new ProviderError(errStatus || 0, describeSendError(errStatus, String(errBody)));
+    }
   },
 
   async disconnect(): Promise<void> {
