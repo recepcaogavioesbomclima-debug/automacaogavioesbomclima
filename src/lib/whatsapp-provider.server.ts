@@ -116,6 +116,19 @@ function toBase64(buffer: ArrayBuffer): string {
   return btoa(binary);
 }
 
+/** Traduz o erro real do provedor para uma mensagem clara, sem esconder o retorno. */
+function describeSendError(status: number, body: string): string {
+  const raw = body.slice(0, 400);
+  if (status === 401 || status === 403) return `Token invalido ou sem permissao (HTTP ${status}): ${raw}`;
+  if (status === 404) return `Endpoint ou recurso inexistente (HTTP 404): ${raw}`;
+  if (status === 400) return `Payload ou destinatario invalido (HTTP 400): ${raw}`;
+  if (status === 409) return `Sessao nao autorizada (HTTP 409): ${raw}`;
+  if (status === 429) return `Limite de envio do provedor atingido (HTTP 429): ${raw}`;
+  if (status >= 500) return `Provedor indisponivel (HTTP ${status}): ${raw}`;
+  if (!status) return `Falha de rede/timeout ao falar com o provedor: ${raw}`;
+  return `Falha no envio (HTTP ${status}): ${raw}`;
+}
+
 export interface HealthResult {
   status: SessionStatus;
   rawStatus: string;
