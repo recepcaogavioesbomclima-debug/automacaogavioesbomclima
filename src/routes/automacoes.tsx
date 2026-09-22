@@ -58,7 +58,8 @@ function Page() {
   const [steps, setSteps] = useState<Step[]>(DEFAULT_STEPS);
 
   const saveMutation = useMutation({
-    mutationFn: () => saveFn({ data: { id: editingId ?? undefined, name, status, steps } }),
+    mutationFn: () =>
+      saveFn({ data: { ...(editingId ? { id: editingId } : {}), name, status, steps } }),
     onSuccess: () => {
       setEditingId(null);
       queryClient.invalidateQueries({ queryKey: ["automations"] });

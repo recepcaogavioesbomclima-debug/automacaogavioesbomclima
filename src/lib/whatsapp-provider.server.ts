@@ -57,11 +57,9 @@ async function request(
   };
   if (init.body !== undefined) headers["Content-Type"] = "application/json";
 
-  const res = await fetch(`${BASE}${path}`, {
-    method: init.method ?? "GET",
-    headers,
-    body: init.body === undefined ? undefined : JSON.stringify(init.body),
-  });
+  const requestInit: RequestInit = { method: init.method ?? "GET", headers };
+  if (init.body !== undefined) requestInit.body = JSON.stringify(init.body);
+  const res = await fetch(`${BASE}${path}`, requestInit);
 
   const contentType = res.headers.get("content-type") ?? "";
   if (contentType.startsWith("image/")) {
