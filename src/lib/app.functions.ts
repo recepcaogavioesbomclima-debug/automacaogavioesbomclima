@@ -228,6 +228,46 @@ export const tickNow = createServerFn({ method: "POST" }).handler(async () => {
 
 /* ------------------------------ TESTE-GAVIOES ----------------------------- */
 
+/** Envio manual REAL (mesma funcao usada pelo motor de automacao). */
+export const testWhatsAppSend = createServerFn({ method: "POST" })
+  .inputValidator((data: { phone: string; message?: string }) => data)
+  .handler(async ({ data }) => {
+    const { normalizePhone } = await import("./db.server");
+    const { sendMessageIdempotent } = await import("./engine.server");
+
+    const phone = normalizePhone(data.phone);
+    const content = (data.message ?? "").trim() || "🦅 TESTE DE ENVIO — Gaviões Bom Clima";
+    if (phone.length < 12) {
+      return {
+        ok: false,
+        phone,
+        providerMessageId: null as string | null,
+        error: `Numero invalido apos normalizacao: "${phone}". Use DDI+DDD+numero (ex.: 5511999999999).`,
+      };
+    }
+
+    try {
+      const sent = await sendMessageIdempotent({
+        phone,
+        content,
+        idempotencyKey: `manual:${Date.now()}:${phone}`,
+      });
+      return {
+        ok: true,
+        phone,
+        providerMessageId: sent.providerMessageId ?? null,
+        error: null as string | null,
+      };
+    } catch (error: any) {
+      return {
+        ok: false,
+        phone,
+        providerMessageId: null as string | null,
+        error: String(error?.message ?? error),
+      };
+    }
+  });
+
 const TEST_MESSAGES = [
   "🦅 TESTE 1 — Conexão do WhatsApp realizada com sucesso.",
   "💬 TESTE 2 — O sistema conseguiu enviar uma mensagem.",
