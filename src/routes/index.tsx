@@ -198,6 +198,51 @@ function Page() {
           ) : null}
         </Card>
 
+        <Card title="Envio manual (teste real)">
+          <p className="text-sm text-muted-foreground">
+            Envia uma mensagem real pelo provedor. Só mostra sucesso quando o provedor confirma e
+            devolve o ID da mensagem.
+          </p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <input
+              value={sendPhone}
+              onChange={(event) => setSendPhone(event.target.value)}
+              placeholder="5511999999999"
+              className="w-56 rounded-md border border-input bg-background px-3 py-2 text-sm"
+            />
+            <input
+              value={sendText}
+              onChange={(event) => setSendText(event.target.value)}
+              placeholder="Mensagem"
+              className="min-w-64 flex-1 rounded-md border border-input bg-background px-3 py-2 text-sm"
+            />
+            <button
+              onClick={() => sendMutation.mutate()}
+              disabled={sendMutation.isPending || !sendPhone}
+              className="rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground disabled:opacity-50"
+            >
+              {sendMutation.isPending ? "Enviando..." : "Enviar mensagem"}
+            </button>
+          </div>
+          {sendMutation.data ? (
+            sendMutation.data.ok ? (
+              <p className="mt-3 rounded-md bg-primary/10 p-3 text-sm text-primary">
+                SENT — número {sendMutation.data.phone} · ID do provedor:{" "}
+                {sendMutation.data.providerMessageId}
+              </p>
+            ) : (
+              <p className="mt-3 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+                FAILED — {sendMutation.data.error}
+              </p>
+            )
+          ) : null}
+          {sendMutation.error ? (
+            <p className="mt-3 rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+              FAILED — {String(sendMutation.error)}
+            </p>
+          ) : null}
+        </Card>
+
         <Card title="TESTE-GAVIOES">
           <p className="text-sm text-muted-foreground">
             Envia 5 mensagens reais com 2 segundos de intervalo. Só funciona com o WhatsApp
