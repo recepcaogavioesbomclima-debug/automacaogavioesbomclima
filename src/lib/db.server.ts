@@ -27,7 +27,14 @@ export async function log(
   console.log(`[${event}] ${status}`, data ? JSON.stringify(data).slice(0, 500) : "");
 }
 
-/** Normaliza telefone para o formato aceito pelo provedor: apenas digitos. */
+/**
+ * Normaliza telefone para o formato exigido pelo provedor: somente digitos,
+ * sempre com DDI. Numeros brasileiros sem DDI (10 ou 11 digitos) recebem "55".
+ */
 export function normalizePhone(input: string): string {
-  return (input ?? "").replace(/\D/g, "");
+  let digits = (input ?? "").replace(/\D/g, "");
+  if (digits.startsWith("00")) digits = digits.slice(2);
+  // numero nacional brasileiro: DDD (2) + 8 ou 9 digitos
+  if (digits.length === 10 || digits.length === 11) digits = `55${digits}`;
+  return digits;
 }
