@@ -11,6 +11,7 @@ import {
   getSession,
   registerWebhook,
   runGavioesTest,
+  testWhatsAppSend,
 } from "@/lib/app.functions";
 
 export const Route = createFileRoute("/")({
@@ -99,6 +100,13 @@ function Page() {
 
   const [testPhone, setTestPhone] = useState("");
   const testMutation = useMutation({ mutationFn: () => testFn({ data: { phone: testPhone } }) });
+
+  const sendFn = useServerFn(testWhatsAppSend);
+  const [sendPhone, setSendPhone] = useState("");
+  const [sendText, setSendText] = useState("🦅 TESTE DE ENVIO — Gaviões Bom Clima");
+  const sendMutation = useMutation({
+    mutationFn: () => sendFn({ data: { phone: sendPhone, message: sendText } }),
+  });
 
   return (
     <div className="min-h-screen bg-background">
