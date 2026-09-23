@@ -17,16 +17,45 @@ import {
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Conexão WhatsApp · Gaviões 24h Bom Clima" },
+      { title: "Academia Gaviões 24h — Bom Clima" },
       {
         name: "description",
         content:
-          "Conecte o WhatsApp da Academia Gaviões 24h por QR Code real e acompanhe o status da sessão.",
+          "Atendimento da Academia Gaviões 24h — Bom Clima pelo WhatsApp, com respostas e acompanhamento automatizados.",
       },
-      { property: "og:title", content: "Conexão WhatsApp · Gaviões 24h Bom Clima" },
+      { property: "og:title", content: "Academia Gaviões 24h — Bom Clima" },
       {
         property: "og:description",
-        content: "Conexão real do WhatsApp por QR Code e motor de automação de atendimento.",
+        content: "Atendimento da Academia Gaviões 24h — Bom Clima pelo WhatsApp.",
+      },
+      { property: "og:type", content: "website" },
+      {
+        property: "og:url",
+        content: "https://automacaogavioesbomclima.lovable.app/",
+      },
+      { name: "twitter:card", content: "summary" },
+      { name: "twitter:title", content: "Academia Gaviões 24h — Bom Clima" },
+      {
+        name: "twitter:description",
+        content: "Atendimento da Academia Gaviões 24h — Bom Clima pelo WhatsApp.",
+      },
+    ],
+    links: [
+      {
+        rel: "canonical",
+        href: "https://automacaogavioesbomclima.lovable.app/",
+      },
+    ],
+    scripts: [
+      {
+        type: "application/ld+json",
+        children: JSON.stringify({
+          "@context": "https://schema.org",
+          "@type": "HealthClub",
+          name: "Academia Gaviões 24h — Bom Clima",
+          url: "https://automacaogavioesbomclima.lovable.app/",
+          sameAs: ["https://www.instagram.com/academiagavioes24hbomclima/"],
+        }),
       },
     ],
   }),
