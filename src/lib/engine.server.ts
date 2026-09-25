@@ -59,11 +59,29 @@ async function nextAllowedTime(now = new Date()): Promise<Date | null> {
 /** Inicia a automacao ativa para o gatilho LEAD_CREATED. */
 export async function triggerLeadCreated(leadId: string, phone: string) {
   const db = getDb();
-  const { data: automations } = await db
+  const normalizedPhone = normalizePhone(phone);
+  console.log(`[LEAD_CREATED] Lead ID: ${leadId} Phone: ${normalizedPhone}`);
+  const { data: automations, error: searchError } = await db
     .from("automations")
-    .select("id")
+    .select("id, name, status, trigger")
     .eq("status", "ACTIVE")
     .eq("trigger", "LEAD_CREATED");
+  if (searchError) throw searchError;
+
+  const found = automations?.length ?? 0;
+  console.log(`[SEARCH AUTOMATIONS] Trigger: LEAD_CREATED Active automations found: ${found}`);
+  await log("SEARCH_AUTOMATIONS", found ? "OK" : "WARN", {
+    leadId,
+    phone: normalizedPhone,
+    trigger: "LEAD_CREATED",
+    activeAutomationsFound: found,
+    automations: (automations ?? []).map((automation) => ({
+      id: automation.id,
+      name: automation.name,
+      status: automation.status,
+    })),
+    reason: found ? null : "NO ACTIVE AUTOMATION FOUND",
+  });
 
   const created: string[] = [];
   for (const automation of automations ?? []) {
@@ -81,18 +99,37 @@ export async function triggerLeadCreated(leadId: string, phone: string) {
       .insert({
         automation_id: automation.id,
         lead_id: leadId,
-        phone: normalizePhone(phone),
+        phone: normalizedPhone,
         status: "PENDING",
         current_step: 0,
         next_run_at: new Date().toISOString(),
       })
       .select("id")
       .single();
+    if (error?.code === "23505") continue;
     if (error) throw error;
     created.push(execution.id);
-    await log("AUTOMATION_STARTED", "OK", { automationId: automation.id, leadId }, execution.id);
+    console.log(
+      `[START EXECUTION] Automation: ${automation.name} Execution ID: ${execution.id} Status: PENDING`,
+    );
+    await log(
+      "AUTOMATION_STARTED",
+      "OK",
+      {
+        leadId,
+        phone: normalizedPhone,
+        trigger: "LEAD_CREATED",
+        automationId: automation.id,
+        automationName: automation.name,
+        automationStatus: automation.status,
+        executionId: execution.id,
+        executionStatus: "PENDING",
+        currentStep: 0,
+      },
+      execution.id,
+    );
   }
-  return created;
+  return { found, created, reason: found ? null : "NO ACTIVE AUTOMATION FOUND" };
 }
 
 /** Marca resposta do cliente e encerra follow-ups pendentes. */
@@ -156,7 +193,7 @@ export async function sendMessageIdempotent(params: {
   content: string;
   idempotencyKey: string;
   executionId?: string | null;
-}): Promise<{ skipped: boolean; providerMessageId?: string }> {
+}): Promise<{ skipped: boolean; providerMessageId?: string; providerResponse?: unknown }> {
   const db = getDb();
   const phone = normalizePhone(params.phone);
 
@@ -202,7 +239,11 @@ export async function sendMessageIdempotent(params: {
       { phone, providerMessageId: result.providerMessageId },
       params.executionId,
     );
-    return { skipped: false, providerMessageId: result.providerMessageId };
+    return {
+      skipped: false,
+      providerMessageId: result.providerMessageId,
+      providerResponse: result.raw,
+    };
   } catch (error: any) {
     await db
       .from("messages")
@@ -255,13 +296,49 @@ async function processExecution(execution: ExecutionRow) {
       }
       const content = String(step.config?.["message"] ?? "");
       if (!content.trim()) throw new Error("Etapa SEND_MESSAGE sem mensagem configurada");
-      await sendMessageIdempotent({
+      const normalizedRecipient = normalizePhone(execution.phone);
+      const debug = {
+        automationId: execution.automation_id,
+        executionId: execution.id,
+        executionStatus: "RUNNING",
+        currentStep: execution.current_step,
+        stepId: step.id,
+        stepType: step.type,
+        recipientBeforeNormalization: execution.phone,
+        recipientAfterNormalization: normalizedRecipient,
+        messageContent: content,
+        calling: "sendMessageIdempotent (mesma função do envio manual)",
+      };
+      console.log(`[AUTOMATION DEBUG] ${JSON.stringify(debug)}`);
+      await log("AUTOMATION_DEBUG", "STARTED", debug, execution.id, step.id);
+      const sent = await sendMessageIdempotent({
         phone: execution.phone,
         content,
         idempotencyKey: `exec:${execution.id}:step:${step.id}`,
         executionId: execution.id,
       });
-      await log("STEP_EXECUTED", "OK", { type: step.type }, execution.id, step.id);
+      if (!sent.providerMessageId) {
+        throw new Error("Envio sem confirmação: o provedor não retornou o ID da mensagem");
+      }
+      await log(
+        "AUTOMATION_DEBUG",
+        "CONFIRMED",
+        {
+          ...debug,
+          sendResult: sent.skipped ? "ALREADY_SENT" : "SENT",
+          providerMessageId: sent.providerMessageId,
+          providerResponse: sent.providerResponse ?? "confirmação já persistida",
+        },
+        execution.id,
+        step.id,
+      );
+      await log(
+        "STEP_EXECUTED",
+        "OK",
+        { type: step.type, providerMessageId: sent.providerMessageId },
+        execution.id,
+        step.id,
+      );
       await advance(new Date(), "PENDING");
       return;
     }
@@ -320,17 +397,21 @@ async function processExecution(execution: ExecutionRow) {
 /** Worker: processa todas as execucoes vencidas. Chamado pelo agendador. */
 export async function runDueExecutions(limit = 20) {
   const db = getDb();
-  const nowIso = new Date().toISOString();
-  const { data: due } = await db
-    .from("automation_executions")
-    .select("id, automation_id, phone, status, current_step, attempts, replied")
-    .in("status", ["PENDING", "WAITING"])
-    .lte("next_run_at", nowIso)
-    .order("next_run_at", { ascending: true })
-    .limit(limit);
-
   let processed = 0;
-  for (const row of (due ?? []) as ExecutionRow[]) {
+  let dueFound = 0;
+  while (processed < limit) {
+    const { data: rowData, error: dueError } = await db
+      .from("automation_executions")
+      .select("id, automation_id, phone, status, current_step, attempts, replied")
+      .in("status", ["PENDING", "WAITING"])
+      .lte("next_run_at", new Date().toISOString())
+      .order("next_run_at", { ascending: true })
+      .limit(1)
+      .maybeSingle();
+    if (dueError) throw dueError;
+    if (!rowData) break;
+    dueFound += 1;
+    const row = rowData as ExecutionRow;
     // lock otimista: so processa quem conseguir mudar o status
     const { data: locked } = await db
       .from("automation_executions")
@@ -340,6 +421,16 @@ export async function runDueExecutions(limit = 20) {
       .select("id")
       .maybeSingle();
     if (!locked) continue;
+
+    console.log(
+      `[AUTOMATION DEBUG] Execution ID: ${row.id} Status: RUNNING Current step: ${row.current_step}`,
+    );
+    await log(
+      "EXECUTION_STEP_STARTED",
+      "RUNNING",
+      { executionId: row.id, currentStep: row.current_step },
+      row.id,
+    );
 
     try {
       await processExecution(row);
@@ -374,5 +465,5 @@ export async function runDueExecutions(limit = 20) {
       }
     }
   }
-  return { due: due?.length ?? 0, processed };
+  return { due: dueFound, processed };
 }

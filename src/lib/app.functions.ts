@@ -197,9 +197,16 @@ export const createLead = createServerFn({ method: "POST" })
       .single();
     if (error) throw error;
     await log("LEAD_CREATED", "OK", { leadId: lead.id, phone });
-    const executions = await triggerLeadCreated(lead.id, phone);
-    await runDueExecutions();
-    return { leadId: lead.id, executions: executions.length };
+    const triggerResult = await triggerLeadCreated(lead.id, phone);
+    const processing = await runDueExecutions();
+    return {
+      leadId: lead.id,
+      executions: triggerResult.created.length,
+      automationsFound: triggerResult.found,
+      executionIds: triggerResult.created,
+      reason: triggerResult.reason,
+      processedSteps: processing.processed,
+    };
   });
 
 /* ------------------------------- Execucoes -------------------------------- */
