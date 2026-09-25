@@ -331,8 +331,16 @@ function Page() {
             </button>
           </div>
           {leadMutation.data ? (
-            <p className="mt-3 text-sm text-muted-foreground">
-              Lead criado. Automações iniciadas: {leadMutation.data.executions}
+            <p
+              className={`mt-3 rounded-md p-3 text-sm ${
+                leadMutation.data.executions > 0
+                  ? "bg-primary/10 text-primary"
+                  : "bg-destructive/10 text-destructive"
+              }`}
+            >
+              {leadMutation.data.executions > 0
+                ? `Lead criado. Automações encontradas: ${leadMutation.data.automationsFound}. Automações iniciadas: ${leadMutation.data.executions}. Etapas processadas agora: ${leadMutation.data.processedSteps}.`
+                : `Lead criado, mas nenhuma automação foi iniciada: ${leadMutation.data.reason ?? "NO ACTIVE AUTOMATION FOUND"}.`}
             </p>
           ) : null}
           {leadMutation.error ? (
