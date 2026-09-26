@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useState } from "react";
@@ -79,7 +79,12 @@ function Page() {
       <Nav />
       <main className="mx-auto grid max-w-5xl gap-5 px-5 py-6">
         <section className="rounded-xl border border-border bg-card p-5">
-          <h2 className="mb-4 text-base font-semibold">Automações</h2>
+          <div className="mb-4 flex items-center justify-between">
+            <h2 className="text-base font-semibold">Automações</h2>
+            <Link to="/automacoes/leads" className="rounded-md border border-input px-3 py-1.5 text-sm hover:bg-accent">
+              Leads em Automação →
+            </Link>
+          </div>
           <div className="space-y-2">
             {(query.data?.automations ?? []).map((automation: any) => {
               const count = (query.data?.steps ?? []).filter(
