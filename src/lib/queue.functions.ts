@@ -94,6 +94,6 @@ export const setExecutionStatus = createServerFn({ method: "POST" })
       .select("id");
     if (error) throw error;
     if (!rows?.length) return { ok: false, error: "Estado atual não permite esta ação (pode estar processando)." };
-    await log(`EXECUTION_${data.action}D_BY_USER`.replace("CANCELD", "CANCELLED").replace("PAUSED", "PAUSED"), "OK", {}, data.id);
+    await log({ PAUSE: "EXECUTION_PAUSED_BY_USER", RESUME: "EXECUTION_RESUMED_BY_USER", CANCEL: "EXECUTION_CANCELLED_BY_USER" }[data.action], "OK", {}, data.id);
     return { ok: true, error: null as string | null };
   });
