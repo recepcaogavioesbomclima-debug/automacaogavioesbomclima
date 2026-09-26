@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 const items = [
   { to: "/", label: "WhatsApp" },
   { to: "/automacoes", label: "Automações" },
+  { to: "/automacoes/leads", label: "Leads em Automação" },
   { to: "/execucoes", label: "Execuções" },
 ] as const;
 
