@@ -29,7 +29,7 @@ async function call(cfg: EvolutionConfig, path: string, init: { method?: string;
     res = await fetch(url, {
       method: init.method ?? "GET",
       headers: { apikey: cfg.api_key, "Content-Type": "application/json", Accept: "application/json" },
-      body: init.body !== undefined ? JSON.stringify(init.body) : undefined,
+      body: init.body !== undefined ? JSON.stringify(init.body) : null,
     });
   } catch (e: any) {
     throw new ProviderError(0, `Falha de rede ao falar com a Evolution API (${url}): ${e?.message ?? e}`);
