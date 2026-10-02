@@ -5,6 +5,7 @@ const items = [
   { to: "/automacoes", label: "Automações" },
   { to: "/automacoes/leads", label: "Leads em Automação" },
   { to: "/execucoes", label: "Execuções" },
+  { to: "/configuracoes", label: "Configurações" },
 ] as const;
 
 export function Nav() {

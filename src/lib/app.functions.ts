@@ -95,10 +95,11 @@ export const registerWebhook = createServerFn({ method: "POST" })
   .inputValidator((data: { origin: string }) => data)
   .handler(async ({ data }) => {
     const { log } = await import("./db.server");
-    const { ActiveProvider: WhatsAppProvider } = await import("./active-provider.server");
+    const { ActiveProvider: WhatsAppProvider, activeProviderName } = await import("./active-provider.server");
     const token = process.env["WHAPI_WEBHOOK_TOKEN"];
     if (!token) return { ok: false, error: "WHAPI_WEBHOOK_TOKEN nao configurado", url: null };
-    const url = `${data.origin.replace(/\/$/, "")}/api/public/hooks/whapi?token=${token}`;
+    const hook = (await activeProviderName()) === "evolution" ? "evolution" : "whapi";
+    const url = `${data.origin.replace(/\/$/, "")}/api/public/hooks/${hook}?token=${token}`;
     try {
       await WhatsAppProvider.setWebhook(url);
       await log("WEBHOOK_REGISTERED", "OK", { url: url.split("?")[0] });
