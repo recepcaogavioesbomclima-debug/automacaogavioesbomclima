@@ -13,12 +13,12 @@ export interface SessionState {
 /** Status REAL da sessao, consultado no provedor e persistido no banco. */
 export const getSession = createServerFn({ method: "GET" }).handler(async (): Promise<SessionState> => {
   const { getDb, log } = await import("./db.server");
-  const { WhatsAppProvider, isProviderConfigured } = await import("./whatsapp-provider.server");
+  const { ActiveProvider: WhatsAppProvider, isAnyProviderConfigured } = await import("./active-provider.server");
   const db = getDb();
   const webhookToken = process.env["WHAPI_WEBHOOK_TOKEN"] ?? null;
 
   const base: SessionState = {
-    configured: isProviderConfigured(),
+    configured: await isAnyProviderConfigured(),
     status: "DISCONNECTED",
     rawStatus: null,
     connectedNumber: null,
@@ -62,7 +62,7 @@ export const getSession = createServerFn({ method: "GET" }).handler(async (): Pr
 /** QR Code REAL do provedor. */
 export const getQrCode = createServerFn({ method: "POST" }).handler(async () => {
   const { log } = await import("./db.server");
-  const { WhatsAppProvider } = await import("./whatsapp-provider.server");
+  const { ActiveProvider: WhatsAppProvider } = await import("./active-provider.server");
   try {
     const health = await WhatsAppProvider.getStatus(true);
     if (health.status === "CONNECTED") {
@@ -80,7 +80,7 @@ export const getQrCode = createServerFn({ method: "POST" }).handler(async () => 
 
 export const disconnectSession = createServerFn({ method: "POST" }).handler(async () => {
   const { getDb, log } = await import("./db.server");
-  const { WhatsAppProvider } = await import("./whatsapp-provider.server");
+  const { ActiveProvider: WhatsAppProvider } = await import("./active-provider.server");
   await WhatsAppProvider.disconnect();
   await getDb()
     .from("whatsapp_sessions")
@@ -95,10 +95,11 @@ export const registerWebhook = createServerFn({ method: "POST" })
   .inputValidator((data: { origin: string }) => data)
   .handler(async ({ data }) => {
     const { log } = await import("./db.server");
-    const { WhatsAppProvider } = await import("./whatsapp-provider.server");
+    const { ActiveProvider: WhatsAppProvider, activeProviderName } = await import("./active-provider.server");
     const token = process.env["WHAPI_WEBHOOK_TOKEN"];
     if (!token) return { ok: false, error: "WHAPI_WEBHOOK_TOKEN nao configurado", url: null };
-    const url = `${data.origin.replace(/\/$/, "")}/api/public/hooks/whapi?token=${token}`;
+    const hook = (await activeProviderName()) === "evolution" ? "evolution" : "whapi";
+    const url = `${data.origin.replace(/\/$/, "")}/api/public/hooks/${hook}?token=${token}`;
     try {
       await WhatsAppProvider.setWebhook(url);
       await log("WEBHOOK_REGISTERED", "OK", { url: url.split("?")[0] });
@@ -288,7 +289,7 @@ export const runGavioesTest = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { normalizePhone, log } = await import("./db.server");
     const { sendMessageIdempotent } = await import("./engine.server");
-    const { WhatsAppProvider } = await import("./whatsapp-provider.server");
+    const { ActiveProvider: WhatsAppProvider } = await import("./active-provider.server");
 
     const phone = normalizePhone(data.phone);
     if (phone.length < 10) throw new Error("Telefone invalido. Use DDI+DDD+numero.");

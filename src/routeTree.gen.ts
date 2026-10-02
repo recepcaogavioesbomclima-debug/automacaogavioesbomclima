@@ -11,9 +11,11 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AutomacoesRouteImport } from './routes/automacoes'
+import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as ExecucoesRouteImport } from './routes/execucoes'
 import { Route as AutomacoesLeadsRouteImport } from './routes/automacoes_.leads'
 import { Route as ApiPublicHooksAutomationTickRouteImport } from './routes/api/public/hooks/automation-tick'
+import { Route as ApiPublicHooksEvolutionRouteImport } from './routes/api/public/hooks/evolution'
 import { Route as ApiPublicHooksWhapiRouteImport } from './routes/api/public/hooks/whapi'
 
 const IndexRoute = IndexRouteImport.update({
@@ -24,6 +26,11 @@ const IndexRoute = IndexRouteImport.update({
 const AutomacoesRoute = AutomacoesRouteImport.update({
   id: '/automacoes',
   path: '/automacoes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConfiguracoesRoute = ConfiguracoesRouteImport.update({
+  id: '/configuracoes',
+  path: '/configuracoes',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ExecucoesRoute = ExecucoesRouteImport.update({
@@ -42,6 +49,11 @@ const ApiPublicHooksAutomationTickRoute =
     path: '/api/public/hooks/automation-tick',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksEvolutionRoute = ApiPublicHooksEvolutionRouteImport.update({
+  id: '/api/public/hooks/evolution',
+  path: '/api/public/hooks/evolution',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicHooksWhapiRoute = ApiPublicHooksWhapiRouteImport.update({
   id: '/api/public/hooks/whapi',
   path: '/api/public/hooks/whapi',
@@ -51,26 +63,32 @@ const ApiPublicHooksWhapiRoute = ApiPublicHooksWhapiRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/automacoes': typeof AutomacoesRoute
+  '/configuracoes': typeof ConfiguracoesRoute
   '/execucoes': typeof ExecucoesRoute
   '/automacoes/leads': typeof AutomacoesLeadsRoute
   '/api/public/hooks/automation-tick': typeof ApiPublicHooksAutomationTickRoute
+  '/api/public/hooks/evolution': typeof ApiPublicHooksEvolutionRoute
   '/api/public/hooks/whapi': typeof ApiPublicHooksWhapiRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/automacoes': typeof AutomacoesRoute
+  '/configuracoes': typeof ConfiguracoesRoute
   '/execucoes': typeof ExecucoesRoute
   '/automacoes/leads': typeof AutomacoesLeadsRoute
   '/api/public/hooks/automation-tick': typeof ApiPublicHooksAutomationTickRoute
+  '/api/public/hooks/evolution': typeof ApiPublicHooksEvolutionRoute
   '/api/public/hooks/whapi': typeof ApiPublicHooksWhapiRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/automacoes': typeof AutomacoesRoute
+  '/configuracoes': typeof ConfiguracoesRoute
   '/execucoes': typeof ExecucoesRoute
   '/automacoes_/leads': typeof AutomacoesLeadsRoute
   '/api/public/hooks/automation-tick': typeof ApiPublicHooksAutomationTickRoute
+  '/api/public/hooks/evolution': typeof ApiPublicHooksEvolutionRoute
   '/api/public/hooks/whapi': typeof ApiPublicHooksWhapiRoute
 }
 export interface FileRouteTypes {
@@ -78,34 +96,42 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/automacoes'
+    | '/configuracoes'
     | '/execucoes'
     | '/automacoes/leads'
     | '/api/public/hooks/automation-tick'
+    | '/api/public/hooks/evolution'
     | '/api/public/hooks/whapi'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/automacoes'
+    | '/configuracoes'
     | '/execucoes'
     | '/automacoes/leads'
     | '/api/public/hooks/automation-tick'
+    | '/api/public/hooks/evolution'
     | '/api/public/hooks/whapi'
   id:
     | '__root__'
     | '/'
     | '/automacoes'
+    | '/configuracoes'
     | '/execucoes'
     | '/automacoes_/leads'
     | '/api/public/hooks/automation-tick'
+    | '/api/public/hooks/evolution'
     | '/api/public/hooks/whapi'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AutomacoesRoute: typeof AutomacoesRoute
+  ConfiguracoesRoute: typeof ConfiguracoesRoute
   ExecucoesRoute: typeof ExecucoesRoute
   AutomacoesLeadsRoute: typeof AutomacoesLeadsRoute
   ApiPublicHooksAutomationTickRoute: typeof ApiPublicHooksAutomationTickRoute
+  ApiPublicHooksEvolutionRoute: typeof ApiPublicHooksEvolutionRoute
   ApiPublicHooksWhapiRoute: typeof ApiPublicHooksWhapiRoute
 }
 
@@ -123,6 +149,13 @@ declare module '@tanstack/react-router' {
       path: '/automacoes'
       fullPath: '/automacoes'
       preLoaderRoute: typeof AutomacoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/configuracoes': {
+      id: '/configuracoes'
+      path: '/configuracoes'
+      fullPath: '/configuracoes'
+      preLoaderRoute: typeof ConfiguracoesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/execucoes': {
@@ -146,6 +179,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksAutomationTickRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/evolution': {
+      id: '/api/public/hooks/evolution'
+      path: '/api/public/hooks/evolution'
+      fullPath: '/api/public/hooks/evolution'
+      preLoaderRoute: typeof ApiPublicHooksEvolutionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/whapi': {
       id: '/api/public/hooks/whapi'
       path: '/api/public/hooks/whapi'
@@ -159,9 +199,11 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AutomacoesRoute: AutomacoesRoute,
+  ConfiguracoesRoute: ConfiguracoesRoute,
   ExecucoesRoute: ExecucoesRoute,
   AutomacoesLeadsRoute: AutomacoesLeadsRoute,
   ApiPublicHooksAutomationTickRoute: ApiPublicHooksAutomationTickRoute,
+  ApiPublicHooksEvolutionRoute: ApiPublicHooksEvolutionRoute,
   ApiPublicHooksWhapiRoute: ApiPublicHooksWhapiRoute,
 }
 export const routeTree = rootRouteImport

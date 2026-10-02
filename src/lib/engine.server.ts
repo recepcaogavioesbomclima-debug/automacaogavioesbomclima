@@ -1,5 +1,6 @@
 import { getDb, log, normalizePhone } from "./db.server";
-import { WhatsAppProvider, ProviderNotConfiguredError } from "./whatsapp-provider.server";
+import { ProviderNotConfiguredError } from "./whatsapp-provider.server";
+import { ActiveProvider as WhatsAppProvider } from "./active-provider.server";
 
 const MAX_ATTEMPTS = 3;
 const RETRY_BACKOFF_SECONDS = [60, 300, 900];
