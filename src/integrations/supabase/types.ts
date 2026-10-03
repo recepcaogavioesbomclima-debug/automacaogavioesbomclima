@@ -180,6 +180,33 @@ export type Database = {
         }
         Relationships: []
       }
+      evolution_config: {
+        Row: {
+          api_key: string
+          api_url: string
+          enabled: boolean
+          id: boolean
+          instance_name: string
+          updated_at: string
+        }
+        Insert: {
+          api_key: string
+          api_url: string
+          enabled?: boolean
+          id?: boolean
+          instance_name: string
+          updated_at?: string
+        }
+        Update: {
+          api_key?: string
+          api_url?: string
+          enabled?: boolean
+          id?: boolean
+          instance_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       leads: {
         Row: {
           created_at: string
