@@ -29,8 +29,9 @@ export const saveEvolutionSettings = createServerFn({ method: "POST" })
     const { getDb, log } = await import("./db.server");
     const { getEvolutionConfig } = await import("./evolution-provider.server");
     const current = await getEvolutionConfig();
-    const apiKey = data.apiKey?.trim() || current?.api_key;
-    if (!apiKey) throw new Error("Informe a API Key.");
+    // Vazio = usa o segredo EVOLUTION_API_KEY guardado no servidor.
+    const apiKey = data.apiKey?.trim() || current?.api_key || "";
+    if (!apiKey) throw new Error("Informe a API Key ou salve o segredo EVOLUTION_API_KEY.");
     const { error } = await (getDb() as any).from("evolution_config").upsert({
       id: true,
       api_url: data.apiUrl.replace(/\/$/, ""),

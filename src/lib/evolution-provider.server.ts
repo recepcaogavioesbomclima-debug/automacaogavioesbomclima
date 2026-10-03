@@ -13,13 +13,25 @@ export interface EvolutionConfig {
   enabled: boolean;
 }
 
+/**
+ * Config: linha da tabela evolution_config (tela Configuracoes), com
+ * fallback nos segredos EVOLUTION_API_URL / EVOLUTION_API_KEY.
+ */
 export async function getEvolutionConfig(): Promise<EvolutionConfig | null> {
   const { data } = await (getDb() as any)
     .from("evolution_config")
     .select("api_url, api_key, instance_name, enabled")
     .eq("id", true)
     .maybeSingle();
-  return data ?? null;
+  const envUrl = process.env["EVOLUTION_API_URL"];
+  const envKey = process.env["EVOLUTION_API_KEY"];
+  if (data) {
+    return { ...data, api_url: data.api_url || envUrl || "", api_key: data.api_key || envKey || "" };
+  }
+  if (envUrl && envKey) {
+    return { api_url: envUrl, api_key: envKey, instance_name: "gavioes-bom-clima", enabled: true };
+  }
+  return null;
 }
 
 async function call(cfg: EvolutionConfig, path: string, init: { method?: string; body?: unknown } = {}) {
