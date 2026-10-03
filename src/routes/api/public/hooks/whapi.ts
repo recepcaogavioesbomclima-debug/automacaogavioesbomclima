@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { getDb, log, normalizePhone } from "@/lib/db.server";
-import { handleInboundReply } from "@/lib/engine.server";
+import { handleInboundReply, runPendingReplies } from "@/lib/engine.server";
 
 /**
  * Webhook REAL do provedor. A URL inclui um token secreto:
@@ -27,6 +27,7 @@ export const Route = createFileRoute("/api/public/hooks/whapi")({
         }
 
         const db = getDb();
+        let needsReply = false;
         const messages: any[] = Array.isArray(payload?.messages) ? payload.messages : [];
         const eventId =
           messages[0]?.id ??
@@ -74,7 +75,7 @@ export const Route = createFileRoute("/api/public/hooks/whapi")({
           });
           await log("MESSAGE_RECEIVED", "OK", { phone, providerMessageId });
 
-          if (phone) await handleInboundReply(phone, String(content));
+          if (phone) needsReply = (await handleInboundReply(phone, String(content))) > 0 || needsReply;
         }
 
         await db
@@ -82,6 +83,10 @@ export const Route = createFileRoute("/api/public/hooks/whapi")({
           .update({ processed_at: new Date().toISOString() })
           .eq("provider_event_id", String(eventId));
 
+        if (needsReply) {
+          await new Promise((r) => setTimeout(r, 5500));
+          await runPendingReplies();
+        }
         return Response.json({ ok: true });
       },
     },

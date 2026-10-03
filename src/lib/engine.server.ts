@@ -528,5 +528,6 @@ export async function runDueExecutions(limit = 20) {
       }
     }
   }
-  return { due: dueFound, processed };
+  const replies = await runPendingReplies().catch(() => 0);
+  return { due: dueFound, processed, replies };
 }

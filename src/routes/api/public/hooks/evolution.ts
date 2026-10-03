@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 import { getDb, log, normalizePhone } from "@/lib/db.server";
-import { handleInboundReply } from "@/lib/engine.server";
+import { handleInboundReply, runPendingReplies } from "@/lib/engine.server";
 
 /** Webhook REAL da Evolution API: /api/public/hooks/evolution?token=<WHAPI_WEBHOOK_TOKEN> */
 export const Route = createFileRoute("/api/public/hooks/evolution")({
@@ -22,6 +22,7 @@ export const Route = createFileRoute("/api/public/hooks/evolution")({
 
         const event = String(payload?.event ?? "").toLowerCase();
         const db = getDb();
+        let needsReply = false;
         const items: any[] = Array.isArray(payload?.data) ? payload.data : payload?.data ? [payload.data] : [];
         const eventId = items[0]?.key?.id ?? `${event}:${payload?.date_time ?? Date.now()}`;
 
@@ -54,7 +55,7 @@ export const Route = createFileRoute("/api/public/hooks/evolution")({
             });
             console.log(`[MESSAGE_RECEIVED]\nFrom: ${phone}\nMessage ID: ${id}\nContent: ${content}`);
             await log("MESSAGE_RECEIVED", "OK", { phone, providerMessageId: id, provider: "evolution" });
-            if (phone) await handleInboundReply(phone, String(content));
+            if (phone) needsReply = (await handleInboundReply(phone, String(content))) > 0 || needsReply;
           }
         } else {
           await log("EVOLUTION_EVENT", "OK", { event, state: payload?.data?.state ?? null });
@@ -64,6 +65,10 @@ export const Route = createFileRoute("/api/public/hooks/evolution")({
           .from("webhook_events")
           .update({ processed_at: new Date().toISOString() })
           .eq("provider_event_id", `evo:${eventId}`);
+        if (needsReply) {
+          await new Promise((r) => setTimeout(r, 5500));
+          await runPendingReplies();
+        }
         return Response.json({ ok: true });
       },
     },
