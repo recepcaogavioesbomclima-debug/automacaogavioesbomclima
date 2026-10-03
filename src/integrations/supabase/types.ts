@@ -25,6 +25,7 @@ export type Database = {
           last_error: string | null
           lead_id: string | null
           next_run_at: string
+          pending_reply_at: string | null
           phone: string
           replied: boolean
           started_at: string
@@ -41,6 +42,7 @@ export type Database = {
           last_error?: string | null
           lead_id?: string | null
           next_run_at?: string
+          pending_reply_at?: string | null
           phone: string
           replied?: boolean
           started_at?: string
@@ -57,6 +59,7 @@ export type Database = {
           last_error?: string | null
           lead_id?: string | null
           next_run_at?: string
+          pending_reply_at?: string | null
           phone?: string
           replied?: boolean
           started_at?: string
@@ -180,6 +183,27 @@ export type Database = {
         }
         Relationships: []
       }
+      business_info: {
+        Row: {
+          content: string
+          fallback_reply: string
+          id: boolean
+          updated_at: string
+        }
+        Insert: {
+          content?: string
+          fallback_reply?: string
+          id?: boolean
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          fallback_reply?: string
+          id?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       evolution_config: {
         Row: {
           api_key: string
@@ -204,6 +228,39 @@ export type Database = {
           id?: boolean
           instance_name?: string
           updated_at?: string
+        }
+        Relationships: []
+      }
+      intent_responses: {
+        Row: {
+          active: boolean
+          alternatives: string[]
+          created_at: string
+          examples: string
+          id: string
+          intent: string
+          priority: number
+          response: string
+        }
+        Insert: {
+          active?: boolean
+          alternatives?: string[]
+          created_at?: string
+          examples?: string
+          id?: string
+          intent: string
+          priority?: number
+          response?: string
+        }
+        Update: {
+          active?: boolean
+          alternatives?: string[]
+          created_at?: string
+          examples?: string
+          id?: string
+          intent?: string
+          priority?: number
+          response?: string
         }
         Relationships: []
       }
