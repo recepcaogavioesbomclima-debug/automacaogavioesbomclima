@@ -133,7 +133,13 @@ export async function triggerLeadCreated(leadId: string, phone: string) {
   return { found, created, reason: found ? null : "NO ACTIVE AUTOMATION FOUND" };
 }
 
-/** Marca resposta do cliente e encerra follow-ups pendentes. */
+const REPLY_DEBOUNCE_MS = 5000;
+
+/**
+ * Mensagem INBOUND do cliente: marca resposta, interrompe os follow-ups e
+ * agenda (com agrupamento de 5s) uma resposta automatica. A execucao fica
+ * em CONVERSING ate o consultor assumir, o cliente sair ou ser cancelada.
+ */
 export async function handleInboundReply(phone: string, content: string) {
   const db = getDb();
   const normalized = normalizePhone(phone);
@@ -141,28 +147,84 @@ export async function handleInboundReply(phone: string, content: string) {
     .from("automation_executions")
     .select("id, status")
     .eq("phone", normalized)
-    .in("status", ["PENDING", "WAITING", "RUNNING", "PAUSED"]);
+    .in("status", ["PENDING", "WAITING", "RUNNING", "PAUSED", "CONVERSING"]);
 
   for (const execution of executions ?? []) {
-    await db
-      .from("automation_executions")
-      .update({ replied: true, updated_at: new Date().toISOString() })
-      .eq("id", execution.id);
+    const patch: Record<string, unknown> = {
+      replied: true,
+      pending_reply_at: new Date(Date.now() + REPLY_DEBOUNCE_MS).toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    // PAUSED = pausado pelo usuario: registra, mas nao responde
+    if (execution.status === "PAUSED") delete patch["pending_reply_at"];
+    else patch["status"] = "CONVERSING";
+    await db.from("automation_executions").update(patch as never).eq("id", execution.id);
     await log("REPLY_DETECTED", "OK", { phone: normalized, content }, execution.id);
-
-    // A regra da automacao de exemplo: resposta encerra a automacao.
-    await db
-      .from("automation_executions")
-      .update({
-        status: "COMPLETED",
-        completed_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-        next_run_at: new Date().toISOString(),
-      })
-      .eq("id", execution.id)
-      .in("status", ["PENDING", "WAITING", "PAUSED"]);
-    await log("AUTOMATION_COMPLETED", "OK", { reason: "cliente respondeu" }, execution.id);
   }
+  return (executions ?? []).length;
+}
+
+/** Responde automaticamente as conversas cujo agrupamento ja venceu. */
+export async function runPendingReplies(limit = 10) {
+  const db = getDb();
+  const { decideReply } = await import("./ai-reply.server");
+  let replied = 0;
+  const { data: due } = await (db as any)
+    .from("automation_executions")
+    .select("id, phone, pending_reply_at")
+    .eq("status", "CONVERSING")
+    .not("pending_reply_at", "is", null)
+    .lte("pending_reply_at", new Date().toISOString())
+    .limit(limit);
+
+  for (const row of due ?? []) {
+    // lock: so quem limpar o pending_reply_at processa (evita respostas duplicadas)
+    const { data: locked } = await (db as any)
+      .from("automation_executions")
+      .update({ pending_reply_at: null })
+      .eq("id", row.id)
+      .eq("pending_reply_at", row.pending_reply_at)
+      .select("id")
+      .maybeSingle();
+    if (!locked) continue;
+
+    const { data: lastIn } = await db
+      .from("messages")
+      .select("id")
+      .eq("phone", row.phone)
+      .eq("direction", "IN")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!lastIn) continue;
+
+    try {
+      await log("AUTO_REPLY_ANALYSING", "RUNNING", { phone: row.phone }, row.id);
+      const decision = await decideReply(row.phone);
+      // consultor pode ter assumido durante a analise
+      const { data: still } = await db.from("automation_executions").select("status").eq("id", row.id).maybeSingle();
+      if (still?.status !== "CONVERSING") continue;
+      const sent = await sendMessageIdempotent({
+        phone: row.phone,
+        content: decision.reply,
+        idempotencyKey: `reply:${row.id}:${lastIn.id}`,
+        executionId: row.id,
+      });
+      await log("AUTO_REPLY_SENT", "OK", { intent: decision.intent, reply: decision.reply, providerMessageId: sent.providerMessageId, needsHuman: decision.needsHuman }, row.id);
+      replied += 1;
+      if (decision.optOut) {
+        await db
+          .from("automation_executions")
+          .update({ status: "CANCELLED", completed_at: new Date().toISOString(), updated_at: new Date().toISOString() })
+          .eq("id", row.id);
+        await log("AUTOMATION_CANCELLED", "OK", { reason: "cliente pediu para nao receber mensagens" }, row.id);
+      }
+    } catch (error: any) {
+      await db.from("automation_executions").update({ last_error: String(error?.message ?? error) }).eq("id", row.id);
+      await log("AUTO_REPLY_FAILED", "ERROR", { error: String(error?.message ?? error) }, row.id);
+    }
+  }
+  return replied;
 }
 
 async function loadSteps(automationId: string): Promise<StepRow[]> {
