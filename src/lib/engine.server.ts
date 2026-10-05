@@ -200,7 +200,15 @@ export async function runPendingReplies(limit = 10) {
 
     try {
       await log("AUTO_REPLY_ANALYSING", "RUNNING", { phone: row.phone }, row.id);
-      const decision = await decideReply(row.phone);
+      let decision;
+      try {
+        decision = await decideReply(row.phone);
+      } catch (aiError: any) {
+        // IA indisponivel: envia a resposta generica em vez de ficar calado
+        const { data: info } = await (db as any).from("business_info").select("fallback_reply").eq("id", true).maybeSingle();
+        await log("AI_FAILED_USING_FALLBACK", "WARN", { error: String(aiError?.message ?? aiError) }, row.id);
+        decision = { intent: "Sem contexto", reply: info?.fallback_reply || "Claro! 😊 Me conta o que você gostaria de saber.", optOut: false, needsHuman: false };
+      }
       // consultor pode ter assumido durante a analise
       const { data: still } = await db.from("automation_executions").select("status").eq("id", row.id).maybeSingle();
       if (still?.status !== "CONVERSING") continue;

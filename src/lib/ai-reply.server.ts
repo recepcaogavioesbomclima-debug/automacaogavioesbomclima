@@ -26,6 +26,24 @@ async function streamResponses(input: unknown[]): Promise<string> {
       store: false,
       reasoning: { effort: "low", summary: "auto" },
       include: ["reasoning.encrypted_content"],
+      text: {
+        format: {
+          type: "json_schema",
+          name: "reply",
+          strict: true,
+          schema: {
+            type: "object",
+            additionalProperties: false,
+            required: ["intent", "reply", "optOut", "needsHuman"],
+            properties: {
+              intent: { type: "string" },
+              reply: { type: "string" },
+              optOut: { type: "boolean" },
+              needsHuman: { type: "boolean" },
+            },
+          },
+        },
+      },
     }),
   });
   if (!res.ok || !res.body) {
