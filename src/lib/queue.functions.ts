@@ -1,6 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 
-const ACTIVE = ["PENDING", "RUNNING", "WAITING", "PAUSED", "FAILED"];
+const ACTIVE = ["PENDING", "RUNNING", "WAITING", "PAUSED", "FAILED", "CONVERSING"];
 
 /** Fila baseada exclusivamente nas execucoes reais do banco. */
 export const listLeadsQueue = createServerFn({ method: "GET" }).handler(async () => {
@@ -44,6 +44,7 @@ export const listLeadsQueue = createServerFn({ method: "GET" }).handler(async ()
       id: e.id,
       status: e.status,
       replied: e.replied,
+      replyPending: Boolean((e as any).pending_reply_at),
       currentStep: e.current_step,
       totalSteps: autoSteps.length,
       nextRunAt: e.next_run_at,
@@ -74,26 +75,33 @@ export const getExecutionHistory = createServerFn({ method: "GET" })
   });
 
 export const setExecutionStatus = createServerFn({ method: "POST" })
-  .inputValidator((data: { id: string; action: "PAUSE" | "RESUME" | "CANCEL" }) => data)
+  .inputValidator((data: { id: string; action: "PAUSE" | "RESUME" | "CANCEL" | "TAKEOVER" }) => data)
   .handler(async ({ data }) => {
     const { getDb, log } = await import("./db.server");
     const db = getDb();
     const now = new Date().toISOString();
-    const patch =
-      data.action === "PAUSE"
+    const patch: Record<string, unknown> =
+      data.action === "TAKEOVER"
+        ? { status: "TAKEN_OVER", pending_reply_at: null, completed_at: now, updated_at: now }
+        : data.action === "PAUSE"
         ? { status: "PAUSED", updated_at: now }
         : data.action === "RESUME"
           ? { status: "WAITING", next_run_at: now, updated_at: now }
           : { status: "CANCELLED", completed_at: now, updated_at: now };
-    const from = data.action === "RESUME" ? ["PAUSED"] : ["PENDING", "WAITING", "PAUSED", "FAILED"];
+    const from =
+      data.action === "RESUME"
+        ? ["PAUSED"]
+        : data.action === "TAKEOVER"
+          ? ["PENDING", "WAITING", "RUNNING", "PAUSED", "FAILED", "CONVERSING"]
+          : ["PENDING", "WAITING", "PAUSED", "FAILED", "CONVERSING"];
     const { data: rows, error } = await db
       .from("automation_executions")
-      .update(patch)
+      .update(patch as never)
       .eq("id", data.id)
       .in("status", from)
       .select("id");
     if (error) throw error;
     if (!rows?.length) return { ok: false, error: "Estado atual não permite esta ação (pode estar processando)." };
-    await log({ PAUSE: "EXECUTION_PAUSED_BY_USER", RESUME: "EXECUTION_RESUMED_BY_USER", CANCEL: "EXECUTION_CANCELLED_BY_USER" }[data.action], "OK", {}, data.id);
+    await log({ PAUSE: "EXECUTION_PAUSED_BY_USER", RESUME: "EXECUTION_RESUMED_BY_USER", CANCEL: "EXECUTION_CANCELLED_BY_USER", TAKEOVER: "ATTENDANCE_TAKEN_OVER" }[data.action], "OK", {}, data.id);
     return { ok: true, error: null as string | null };
   });

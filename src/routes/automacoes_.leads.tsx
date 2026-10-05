@@ -22,18 +22,20 @@ export const Route = createFileRoute("/automacoes_/leads")({
 });
 
 const STATUS: Record<string, { label: string; cls: string }> = {
-  WAITING: { label: "🟡 AGUARDANDO", cls: "bg-chart-4/15 text-chart-4" },
-  PENDING: { label: "🟡 AGUARDANDO", cls: "bg-chart-4/15 text-chart-4" },
-  RUNNING: { label: "🔵 PROCESSANDO", cls: "bg-chart-2/15 text-chart-2" },
-  REPLIED: { label: "🟢 RESPONDEU", cls: "bg-primary/15 text-primary" },
-  COMPLETED: { label: "✅ CONCLUÍDO", cls: "bg-primary/15 text-primary" },
-  PAUSED: { label: "⏸️ PAUSADO", cls: "bg-muted text-muted-foreground" },
-  FAILED: { label: "🔴 ERRO", cls: "bg-destructive/15 text-destructive" },
-  CANCELLED: { label: "❌ CANCELADO", cls: "bg-muted text-muted-foreground" },
+  WAITING: { label: "⏳ Aguardando próxima etapa", cls: "bg-chart-4/15 text-chart-4" },
+  PENDING: { label: "🟢 Automação ativa", cls: "bg-primary/15 text-primary" },
+  RUNNING: { label: "🟢 Automação ativa", cls: "bg-primary/15 text-primary" },
+  CONVERSING: { label: "💬 Cliente respondeu", cls: "bg-chart-2/15 text-chart-2" },
+  REPLYING: { label: "🤖 Respondendo automaticamente", cls: "bg-chart-2/15 text-chart-2" },
+  TAKEN_OVER: { label: "👤 Atendimento assumido", cls: "bg-muted text-muted-foreground" },
+  COMPLETED: { label: "✅ Automação concluída", cls: "bg-primary/15 text-primary" },
+  PAUSED: { label: "⏸ Automação pausada", cls: "bg-muted text-muted-foreground" },
+  FAILED: { label: "🔴 Erro", cls: "bg-destructive/15 text-destructive" },
+  CANCELLED: { label: "❌ Automação cancelada", cls: "bg-muted text-muted-foreground" },
 };
 
-function Badge({ status, replied }: { status: string; replied?: boolean }) {
-  const s = STATUS[replied && status !== "CANCELLED" ? "REPLIED" : status] ?? { label: status, cls: "bg-muted" };
+function Badge({ status, replyPending }: { status: string; replied?: boolean; replyPending?: boolean }) {
+  const s = STATUS[status === "CONVERSING" && replyPending ? "REPLYING" : status] ?? { label: status, cls: "bg-muted" };
   return <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-medium ${s.cls}`}>{s.label}</span>;
 }
 
@@ -113,7 +115,7 @@ function Page() {
                     </td>
                     <td className="py-2 pr-3">{ticking(r.status) ? fmt(r.nextRunAt) : "—"}</td>
                     <td className="py-2 pr-3 font-mono">{ticking(r.status) ? `⏱ ${countdown(r.nextRunAt, now)}` : "—"}</td>
-                    <td className="py-2 pr-3"><Badge status={r.status} replied={r.replied} /></td>
+                    <td className="py-2 pr-3"><Badge status={r.status} replied={r.replied} replyPending={r.replyPending} /></td>
                   </tr>
                 ))}
               </tbody>
@@ -141,7 +143,7 @@ function Details({ row, now, onClose }: { row: any; now: number; onClose: () => 
     refetchInterval: 5000,
   });
   const action = useMutation({
-    mutationFn: (a: "PAUSE" | "RESUME" | "CANCEL") => statusFn({ data: { id: row.id, action: a } }),
+    mutationFn: (a: "PAUSE" | "RESUME" | "CANCEL" | "TAKEOVER") => statusFn({ data: { id: row.id, action: a } }),
     onSuccess: (res) => {
       if (!res.ok) alert(res.error);
       qc.invalidateQueries({ queryKey: ["leads-queue"] });
@@ -166,7 +168,7 @@ function Details({ row, now, onClose }: { row: any; now: number; onClose: () => 
         <Field k="Nome" v={row.leadName || "Sem nome"} />
         <Field k="Telefone" v={row.phone} />
         <Field k="Automação" v={row.automationName} />
-        <Field k="Status" v={<Badge status={row.status} replied={row.replied} />} />
+        <Field k="Status" v={<Badge status={row.status} replied={row.replied} replyPending={row.replyPending} />} />
         <Field k="Última mensagem" v={row.lastMessage ?? "—"} />
         <Field k="Enviada em" v={fmt(row.lastSentAt)} />
         <Field k="Próxima mensagem" v={row.nextMessage ?? "Nenhuma"} />
@@ -175,6 +177,13 @@ function Details({ row, now, onClose }: { row: any; now: number; onClose: () => 
       </div>
       {row.lastError ? <p className="mt-3 text-sm text-destructive">Erro: {row.lastError}</p> : null}
       <div className="mt-4 flex gap-2">
+        <button
+          onClick={() => confirm("Assumir este atendimento? A automação para na hora.") && action.mutate("TAKEOVER")}
+          disabled={action.isPending}
+          className="rounded-md bg-primary px-3 py-1.5 text-sm font-medium text-primary-foreground disabled:opacity-50"
+        >
+          Assumir atendimento
+        </button>
         {row.status === "PAUSED" ? (
           <button onClick={() => action.mutate("RESUME")} disabled={action.isPending} className="rounded-md border border-input px-3 py-1.5 text-sm hover:bg-accent">
             Retomar automação
