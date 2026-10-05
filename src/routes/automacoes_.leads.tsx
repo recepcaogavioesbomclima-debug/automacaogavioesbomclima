@@ -115,7 +115,7 @@ function Page() {
                     </td>
                     <td className="py-2 pr-3">{ticking(r.status) ? fmt(r.nextRunAt) : "—"}</td>
                     <td className="py-2 pr-3 font-mono">{ticking(r.status) ? `⏱ ${countdown(r.nextRunAt, now)}` : "—"}</td>
-                    <td className="py-2 pr-3"><Badge status={r.status} replied={r.replied} /></td>
+                    <td className="py-2 pr-3"><Badge status={r.status} replied={r.replied} replyPending={r.replyPending} /></td>
                   </tr>
                 ))}
               </tbody>
