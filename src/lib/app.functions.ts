@@ -99,7 +99,10 @@ export const registerWebhook = createServerFn({ method: "POST" })
     const token = process.env["WHAPI_WEBHOOK_TOKEN"];
     if (!token) return { ok: false, error: "WHAPI_WEBHOOK_TOKEN nao configurado", url: null };
     const hook = (await activeProviderName()) === "evolution" ? "evolution" : "whapi";
-    const url = `${data.origin.replace(/\/$/, "")}/api/public/hooks/${hook}?token=${token}`;
+    // Sempre o endereco publicado: o endereco de preview exige login e bloqueia o provedor.
+    void data;
+    const PUBLIC_ORIGIN = "https://automacaogavioesbomclima.lovable.app";
+    const url = `${PUBLIC_ORIGIN}/api/public/hooks/${hook}?token=${token}`;
     try {
       await WhatsAppProvider.setWebhook(url);
       await log("WEBHOOK_REGISTERED", "OK", { url: url.split("?")[0] });
