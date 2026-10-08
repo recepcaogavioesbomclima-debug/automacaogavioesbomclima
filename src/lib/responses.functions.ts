@@ -66,3 +66,54 @@ export const deleteIntent = createServerFn({ method: "POST" })
     await (getDb() as any).from("intent_responses").delete().eq("id", data.id);
     return { ok: true };
   });
+
+export const getGlobalReply = createServerFn({ method: "GET" }).handler(async () => {
+  const { getDb } = await import("./db.server");
+  const db = getDb() as any;
+  const [{ data: cfg }, { data: msgs }, { data: contacts }] = await Promise.all([
+    db.from("global_reply_settings").select("*").eq("id", true).maybeSingle(),
+    db.from("messages").select("phone, created_at").eq("direction", "IN").order("created_at", { ascending: false }).limit(200),
+    db.from("contact_ai").select("phone, paused, last_reply_at"),
+  ]);
+  const map = new Map<string, any>((contacts ?? []).map((c: any) => [c.phone, c]));
+  const seen = new Set<string>();
+  const recent: { phone: string; lastAt: string; paused: boolean; lastReplyAt: string | null }[] = [];
+  for (const m of msgs ?? []) {
+    if (!m.phone || seen.has(m.phone)) continue;
+    seen.add(m.phone);
+    const c = map.get(m.phone);
+    recent.push({ phone: m.phone, lastAt: m.created_at, paused: Boolean(c?.paused), lastReplyAt: c?.last_reply_at ?? null });
+    if (recent.length >= 30) break;
+  }
+  return {
+    settings: cfg as { enabled: boolean; reply_new_leads: boolean; reply_existing: boolean; context_messages: number; min_interval_seconds: number },
+    recent,
+  };
+});
+
+export const saveGlobalReply = createServerFn({ method: "POST" })
+  .inputValidator((d) =>
+    z.object({
+      enabled: z.boolean(),
+      reply_new_leads: z.boolean(),
+      reply_existing: z.boolean(),
+      context_messages: z.number().int().min(1).max(50),
+      min_interval_seconds: z.number().int().min(5).max(600),
+    }).parse(d),
+  )
+  .handler(async ({ data }) => {
+    const { getDb } = await import("./db.server");
+    const { error } = await (getDb() as any).from("global_reply_settings").update({ ...data, updated_at: new Date().toISOString() }).eq("id", true);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const setContactAi = createServerFn({ method: "POST" })
+  .inputValidator((d) => z.object({ phone: z.string().min(8).max(20), paused: z.boolean() }).parse(d))
+  .handler(async ({ data }) => {
+    const { getDb, log } = await import("./db.server");
+    const { error } = await (getDb() as any).from("contact_ai").upsert({ phone: data.phone, paused: data.paused, pending_reply_at: null, updated_at: new Date().toISOString() });
+    if (error) throw new Error(error.message);
+    await log(data.paused ? "CONTACT_AI_PAUSED" : "CONTACT_AI_RESUMED", "OK", { phone: data.phone });
+    return { ok: true };
+  });

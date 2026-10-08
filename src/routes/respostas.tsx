@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
 
 import { Nav } from "@/components/Nav";
+import { GlobalReplyPanel } from "@/components/GlobalReplyPanel";
 import { deleteIntent, getResponsesBase, saveBusinessInfo, saveIntent } from "@/lib/responses.functions";
 
 export const Route = createFileRoute("/respostas")({
@@ -86,6 +87,8 @@ function Page() {
             {infoMut.isPending ? "Salvando..." : infoMut.isSuccess ? "Salvo ✓" : "Salvar informações"}
           </button>
         </section>
+
+        <GlobalReplyPanel />
 
         <section className="rounded-xl border border-border bg-card p-5">
           <div className="mb-3 flex items-center justify-between">
