@@ -81,12 +81,12 @@ async function streamResponses(input: unknown[]): Promise<string> {
   return text;
 }
 
-export async function decideReply(phone: string): Promise<AiDecision> {
+export async function decideReply(phone: string, contextCount = 20): Promise<AiDecision> {
   const db = getDb();
   const [{ data: info }, { data: intents }, { data: history }] = await Promise.all([
     (db as any).from("business_info").select("content, fallback_reply").eq("id", true).maybeSingle(),
     (db as any).from("intent_responses").select("intent, examples, response, alternatives, priority").eq("active", true).order("priority", { ascending: false }),
-    db.from("messages").select("direction, content, created_at").eq("phone", phone).order("created_at", { ascending: false }).limit(20),
+    db.from("messages").select("direction, content, created_at").eq("phone", phone).order("created_at", { ascending: false }).limit(Math.min(Math.max(contextCount, 1), 50)),
   ]);
   const fallback: string = info?.fallback_reply || "Claro! 😊 Me conta o que você gostaria de saber.";
   const transcript = (history ?? [])
