@@ -204,6 +204,30 @@ export type Database = {
         }
         Relationships: []
       }
+      contact_ai: {
+        Row: {
+          last_reply_at: string | null
+          paused: boolean
+          pending_reply_at: string | null
+          phone: string
+          updated_at: string
+        }
+        Insert: {
+          last_reply_at?: string | null
+          paused?: boolean
+          pending_reply_at?: string | null
+          phone: string
+          updated_at?: string
+        }
+        Update: {
+          last_reply_at?: string | null
+          paused?: boolean
+          pending_reply_at?: string | null
+          phone?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       evolution_config: {
         Row: {
           api_key: string
@@ -227,6 +251,36 @@ export type Database = {
           enabled?: boolean
           id?: boolean
           instance_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      global_reply_settings: {
+        Row: {
+          context_messages: number
+          enabled: boolean
+          id: boolean
+          min_interval_seconds: number
+          reply_existing: boolean
+          reply_new_leads: boolean
+          updated_at: string
+        }
+        Insert: {
+          context_messages?: number
+          enabled?: boolean
+          id?: boolean
+          min_interval_seconds?: number
+          reply_existing?: boolean
+          reply_new_leads?: boolean
+          updated_at?: string
+        }
+        Update: {
+          context_messages?: number
+          enabled?: boolean
+          id?: boolean
+          min_interval_seconds?: number
+          reply_existing?: boolean
+          reply_new_leads?: boolean
           updated_at?: string
         }
         Relationships: []

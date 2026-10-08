@@ -161,7 +161,90 @@ export async function handleInboundReply(phone: string, content: string) {
     await db.from("automation_executions").update(patch as never).eq("id", execution.id);
     await log("REPLY_DETECTED", "OK", { phone: normalized, content }, execution.id);
   }
-  return (executions ?? []).length;
+  if ((executions ?? []).length) return executions!.length;
+  return scheduleGlobalReply(normalized, content);
+}
+
+/** Resposta Inteligente Global: contato fora de automacao. Mesma base de conhecimento. */
+async function scheduleGlobalReply(phone: string, content: string) {
+  const db = getDb() as any;
+  const { data: cfg } = await db.from("global_reply_settings").select("*").eq("id", true).maybeSingle();
+  if (!cfg?.enabled) {
+    await log("GLOBAL_REPLY_SKIPPED", "OK", { phone, reason: "desativada" });
+    return 0;
+  }
+  const { data: contact } = await db.from("contact_ai").select("*").eq("phone", phone).maybeSingle();
+  if (contact?.paused) {
+    await log("GLOBAL_REPLY_SKIPPED", "OK", { phone, reason: "IA pausada para o contato" });
+    return 0;
+  }
+  const { count } = await db.from("messages").select("id", { count: "exact", head: true }).eq("phone", phone);
+  const isNew = (count ?? 0) <= 1 && !contact;
+  if (isNew ? !cfg.reply_new_leads : !cfg.reply_existing) {
+    await log("GLOBAL_REPLY_SKIPPED", "OK", { phone, reason: isNew ? "novos contatos desativado" : "contatos existentes desativado" });
+    return 0;
+  }
+  const delay = Math.max(5, Number(cfg.min_interval_seconds) || 5) * 1000;
+  await db.from("contact_ai").upsert({
+    phone,
+    paused: false,
+    pending_reply_at: new Date(Date.now() + delay).toISOString(),
+    updated_at: new Date().toISOString(),
+  });
+  await log("GLOBAL_REPLY_SCHEDULED", "OK", { phone, content, isNew });
+  return 1;
+}
+
+async function runGlobalReplies(limit = 10) {
+  const db = getDb() as any;
+  const { decideReply } = await import("./ai-reply.server");
+  const { data: cfg } = await db.from("global_reply_settings").select("*").eq("id", true).maybeSingle();
+  if (!cfg?.enabled) return 0;
+  const { data: due } = await db
+    .from("contact_ai")
+    .select("phone, pending_reply_at")
+    .eq("paused", false)
+    .not("pending_reply_at", "is", null)
+    .lte("pending_reply_at", new Date().toISOString())
+    .limit(limit);
+  let replied = 0;
+  for (const row of due ?? []) {
+    const { data: locked } = await db
+      .from("contact_ai")
+      .update({ pending_reply_at: null })
+      .eq("phone", row.phone)
+      .eq("pending_reply_at", row.pending_reply_at)
+      .select("phone")
+      .maybeSingle();
+    if (!locked) continue;
+    const { data: lastIn } = await db
+      .from("messages").select("id").eq("phone", row.phone).eq("direction", "IN")
+      .order("created_at", { ascending: false }).limit(1).maybeSingle();
+    if (!lastIn) continue;
+    try {
+      let decision;
+      try {
+        decision = await decideReply(row.phone, Number(cfg.context_messages) || 20);
+      } catch (aiError: any) {
+        const { data: info } = await db.from("business_info").select("fallback_reply").eq("id", true).maybeSingle();
+        await log("AI_FAILED_USING_FALLBACK", "WARN", { phone: row.phone, error: String(aiError?.message ?? aiError) });
+        decision = { intent: "Sem contexto", reply: info?.fallback_reply || "Claro! 😊 Me conta o que você gostaria de saber.", optOut: false, needsHuman: false };
+      }
+      const { data: still } = await db.from("contact_ai").select("paused").eq("phone", row.phone).maybeSingle();
+      if (still?.paused) continue;
+      const sent = await sendMessageIdempotent({
+        phone: row.phone,
+        content: decision.reply,
+        idempotencyKey: `greply:${row.phone}:${lastIn.id}`,
+      });
+      await db.from("contact_ai").update({ last_reply_at: new Date().toISOString(), paused: Boolean(decision.optOut) }).eq("phone", row.phone);
+      await log("GLOBAL_REPLY_SENT", "OK", { phone: row.phone, intent: decision.intent, reply: decision.reply, providerMessageId: sent.providerMessageId, needsHuman: decision.needsHuman });
+      replied += 1;
+    } catch (error: any) {
+      await log("GLOBAL_REPLY_FAILED", "ERROR", { phone: row.phone, error: String(error?.message ?? error) });
+    }
+  }
+  return replied;
 }
 
 /** Responde automaticamente as conversas cujo agrupamento ja venceu. */
@@ -232,6 +315,7 @@ export async function runPendingReplies(limit = 10) {
       await log("AUTO_REPLY_FAILED", "ERROR", { error: String(error?.message ?? error) }, row.id);
     }
   }
+  replied += await runGlobalReplies(limit).catch(() => 0);
   return replied;
 }
 
