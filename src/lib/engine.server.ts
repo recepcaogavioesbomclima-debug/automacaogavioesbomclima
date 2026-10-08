@@ -235,7 +235,7 @@ async function runGlobalReplies(limit = 10) {
       const sent = await sendMessageIdempotent({
         phone: row.phone,
         content: decision.reply,
-        idempotencyKey: `greply:${row.phone}:${lastIn.id}`,
+        idempotencyKey: `inbound-reply:${lastIn.id}`,
       });
       await db.from("contact_ai").update({ last_reply_at: new Date().toISOString(), paused: Boolean(decision.optOut) }).eq("phone", row.phone);
       await log("GLOBAL_REPLY_SENT", "OK", { phone: row.phone, intent: decision.intent, reply: decision.reply, providerMessageId: sent.providerMessageId, needsHuman: decision.needsHuman });
@@ -298,7 +298,8 @@ export async function runPendingReplies(limit = 10) {
       const sent = await sendMessageIdempotent({
         phone: row.phone,
         content: decision.reply,
-        idempotencyKey: `reply:${row.id}:${lastIn.id}`,
+        // 1 resposta por mensagem recebida, mesmo com varias execucoes do mesmo numero
+        idempotencyKey: `inbound-reply:${lastIn.id}`,
         executionId: row.id,
       });
       await log("AUTO_REPLY_SENT", "OK", { intent: decision.intent, reply: decision.reply, providerMessageId: sent.providerMessageId, needsHuman: decision.needsHuman }, row.id);
