@@ -8,6 +8,13 @@
       "when": 1791062694307,
       "tag": "0000_auto_reply",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791484806928,
+      "tag": "0001_global_ai_reply",
+      "breakpoints": true
     }
   ]
 }
