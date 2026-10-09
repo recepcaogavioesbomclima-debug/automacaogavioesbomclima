@@ -13,7 +13,19 @@ export interface AiDecision {
 
 const MODEL = "openai/gpt-6-astra";
 
-async function streamResponses(input: unknown[]): Promise<string> {
+const REPLY_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["intent", "reply", "optOut", "needsHuman"],
+  properties: {
+    intent: { type: "string" },
+    reply: { type: "string" },
+    optOut: { type: "boolean" },
+    needsHuman: { type: "boolean" },
+  },
+};
+
+export async function streamResponses(input: unknown[], name = "reply", schema: unknown = REPLY_SCHEMA): Promise<string> {
   const apiKey = process.env["LOVABLE_API_KEY"];
   if (!apiKey) throw new Error("LOVABLE_API_KEY ausente");
   const res = await fetch("https://ai.gateway.lovable.dev/v1/responses", {
@@ -29,19 +41,9 @@ async function streamResponses(input: unknown[]): Promise<string> {
       text: {
         format: {
           type: "json_schema",
-          name: "reply",
+          name,
           strict: true,
-          schema: {
-            type: "object",
-            additionalProperties: false,
-            required: ["intent", "reply", "optOut", "needsHuman"],
-            properties: {
-              intent: { type: "string" },
-              reply: { type: "string" },
-              optOut: { type: "boolean" },
-              needsHuman: { type: "boolean" },
-            },
-          },
+          schema,
         },
       },
     }),
