@@ -318,6 +318,99 @@ export type Database = {
         }
         Relationships: []
       }
+      interest_settings: {
+        Row: {
+          hot_threshold: number
+          id: boolean
+          updated_at: string
+        }
+        Insert: {
+          hot_threshold?: number
+          id?: boolean
+          updated_at?: string
+        }
+        Update: {
+          hot_threshold?: number
+          id?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      lead_interest: {
+        Row: {
+          analyzed_at: string | null
+          hot: boolean
+          intent: string
+          level: string
+          objection: string | null
+          pending_at: string | null
+          phone: string
+          reasons: Json
+          score: number
+          trend: string
+          updated_at: string
+        }
+        Insert: {
+          analyzed_at?: string | null
+          hot?: boolean
+          intent?: string
+          level?: string
+          objection?: string | null
+          pending_at?: string | null
+          phone: string
+          reasons?: Json
+          score?: number
+          trend?: string
+          updated_at?: string
+        }
+        Update: {
+          analyzed_at?: string | null
+          hot?: boolean
+          intent?: string
+          level?: string
+          objection?: string | null
+          pending_at?: string | null
+          phone?: string
+          reasons?: Json
+          score?: number
+          trend?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      lead_interest_history: {
+        Row: {
+          created_at: string
+          id: string
+          intent: string
+          level: string
+          objection: string | null
+          phone: string
+          reason: string | null
+          score: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          intent: string
+          level: string
+          objection?: string | null
+          phone: string
+          reason?: string | null
+          score: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          intent?: string
+          level?: string
+          objection?: string | null
+          phone?: string
+          reason?: string | null
+          score?: number
+        }
+        Relationships: []
+      }
       leads: {
         Row: {
           created_at: string
